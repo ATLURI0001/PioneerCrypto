@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  * {
+    @apply border-crypto-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-crypto-bg text-crypto-text;
+    background-image:
+      linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px),
+      radial-gradient(ellipse at center, rgba(0,245,255,0.08) 0%, transparent 70%);
+    background-size: 60px 60px, 60px 60px, 100% 100%;
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    @apply bg-crypto-primary/30 text-crypto-bg;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-crypto-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-crypto-borderHover rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-crypto-primary;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-crypto-primary via-crypto-accent to-crypto-secondary bg-clip-text text-transparent;
+  }
+
+  .glass {
+    @apply bg-crypto-card backdrop-blur-lg border border-crypto-border;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:border-crypto-borderHover hover:shadow-glow-primary;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-crypto-primary text-crypto-bg font-medium rounded-lg hover:bg-crypto-primary/90 active:bg-crypto-primary focus:outline-none focus:ring-2 focus:ring-crypto-primary/50 focus:ring-offset-2 focus:ring-offset-crypto-bg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-glow-primary;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-crypto-bgSecondary text-crypto-text font-medium rounded-lg border border-crypto-border hover:bg-crypto-bgSecondary/80 hover:border-crypto-borderHover focus:outline-none focus:ring-2 focus:ring-crypto-primary/50 focus:ring-offset-2 focus:ring-offset-crypto-bg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-transparent text-crypto-primary font-medium rounded-lg border border-crypto-primary hover:bg-crypto-primaryDim focus:outline-none focus:ring-2 focus:ring-crypto-primary/50 focus:ring-offset-2 focus:ring-offset-crypto-bg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-transparent text-crypto-text font-medium rounded-lg hover:bg-crypto-bgSecondary focus:outline-none focus:ring-2 focus:ring-crypto-primary/50 focus:ring-offset-2 focus:ring-offset-crypto-bg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200;
+  }
+
+  .input-base {
+    @apply w-full bg-crypto-bgSecondary border border-crypto-border rounded-lg px-4 py-2.5 text-crypto-text placeholder-crypto-textMuted focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-crypto-bg focus:ring-crypto-primary/50 focus:border-crypto-primary transition-all duration-200;
+  }
+
+  .input-error {
+    @apply border-crypto-error focus:ring-crypto-error/50 focus:border-crypto-error;
+  }
+
+  .link {
+    @apply text-crypto-primary hover:text-crypto-primary/80 underline-offset-2 hover:underline transition-colors;
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation: animateIn 0.3s ease-out forwards;
+  }
+
+  @keyframes animateIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
