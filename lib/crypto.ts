@@ -1,6 +1,7 @@
 const HEX_CHARS = '0123456789abcdef'
 
 export function randomHex(length: number): string {
+  if (length <= 0) return '0x'
   let result = '0x'
   for (let i = 0; i < length; i++) {
     result += HEX_CHARS[Math.floor(Math.random() * 16)]
@@ -31,29 +32,35 @@ export function generateTokenId(): string {
 }
 
 export function formatAddress(address: string, chars = 4): string {
-  if (!address || address.length < chars * 2 + 2) return address
+  if (!address || chars <= 0 || address.length < chars * 2 + 2) return address || ''
   return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`
 }
 
 export function formatHash(hash: string, chars = 6): string {
-  if (!hash || hash.length < chars * 2 + 2) return hash
+  if (!hash || chars <= 0 || hash.length < chars * 2 + 2) return hash || ''
   return `${hash.slice(0, chars + 2)}...${hash.slice(-chars)}`
 }
 
-export function formatBalance(balance: string | number, decimals: number): string {
-  const num = typeof balance === 'string' ? BigInt(balance) : BigInt(balance)
-  const divisor = BigInt(10 ** decimals)
+export function formatBalance(balance: string | number | bigint, decimals: number): string {
+  const dec = Math.max(0, Math.floor(decimals))
+  const num = typeof balance === 'bigint' ? balance : BigInt(String(balance).replace(/,/g, '').trim() || '0')
+  const divisor = 10n ** BigInt(dec)
   const whole = num / divisor
   const fraction = num % divisor
-  if (fraction === BigInt(0)) return whole.toString()
-  const fracStr = fraction.toString().padStart(decimals, '0').replace(/0+$/, '')
+  if (fraction === 0n || dec === 0) return whole.toString()
+  const fracStr = fraction.toString().padStart(dec, '0').replace(/0+$/, '')
   return `${whole}.${fracStr}`
 }
 
 export function parseBalance(balance: string, decimals: number): bigint {
-  const [whole, fraction = ''] = balance.split('.')
-  const fracPadded = fraction.padEnd(decimals, '0').slice(0, decimals)
-  return BigInt(whole) * BigInt(10 ** decimals) + BigInt(fracPadded)
+  const dec = Math.max(0, Math.floor(decimals))
+  const clean = balance.trim().replace(/,/g, '')
+  if (!clean || clean === '.') return 0n
+
+  const [rawWhole, rawFraction = ''] = clean.split('.')
+  const whole = rawWhole === '' || rawWhole === undefined ? '0' : rawWhole
+  const fracPadded = rawFraction.padEnd(dec, '0').slice(0, dec)
+  return BigInt(whole) * (10n ** BigInt(dec)) + (fracPadded ? BigInt(fracPadded) : 0n)
 }
 
 export function shortenAddress(address: string, start = 6, end = 4): string {
@@ -63,11 +70,24 @@ export function shortenAddress(address: string, start = 6, end = 4): string {
 }
 
 export function isValidAddress(address: string): boolean {
-  return /^0x[a-fA-F0-9]{40}$/.test(address)
+  return typeof address === 'string' && /^0x[a-fA-F0-9]{40}$/.test(address.trim())
 }
 
 export function isValidHash(hash: string): boolean {
-  return /^0x[a-fA-F0-9]{64}$/.test(hash)
+  return typeof hash === 'string' && /^0x[a-fA-F0-9]{64}$/.test(hash.trim())
+}
+
+export function isValidSignature(sig: string): boolean {
+  return typeof sig === 'string' && /^0x[a-fA-F0-9]{130}$/.test(sig.trim())
+}
+
+export function isValidNonce(nonce: number | string | bigint): boolean {
+  try {
+    const val = typeof nonce === 'bigint' ? nonce : BigInt(String(nonce).trim())
+    return val >= 0n && val <= (2n ** 64n - 1n)
+  } catch {
+    return false
+  }
 }
 
 export function checksumAddress(address: string): string {
