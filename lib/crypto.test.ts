@@ -11,6 +11,8 @@ import {
   formatBalance,
   parseBalance,
   shortenAddress,
+  normalizeHexPrefix,
+  encodeEip712Type,
 } from './crypto.ts'
 
 describe('Crypto Utilities', () => {
@@ -77,5 +79,41 @@ describe('Crypto Utilities', () => {
     assert.equal(shortenAddress(addr), '0xd8dA6B...6045')
     assert.equal(shortenAddress(''), '')
     assert.equal(shortenAddress('0x12'), '0x12')
+  })
+
+  it('handles negative balances, NaN decimals, and malformed inputs safely', () => {
+    assert.equal(formatBalance('-1500', 3), '-1.5')
+    assert.equal(formatBalance('-1000', 3), '-1')
+    assert.equal(formatBalance('500', Number.NaN), '500')
+    assert.equal(formatBalance('not_a_number', 18), '0')
+
+    assert.equal(parseBalance('1.2.3', 18), 0n)
+    assert.equal(parseBalance('abc', 18), 0n)
+    assert.equal(parseBalance('-5.0', 18), 0n)
+    assert.equal(parseBalance('42', Number.NaN), 42n)
+  })
+
+  it('normalizes hex prefixes and encodes EIP-712 structured types', () => {
+    assert.equal(normalizeHexPrefix('  0XAbCd1234 '), '0xabcd1234')
+    assert.equal(normalizeHexPrefix('deadBEEF'), '0xdeadbeef')
+    assert.equal(normalizeHexPrefix(''), '0x')
+    assert.throws(() => normalizeHexPrefix('0xZZZZ'), /Invalid hexadecimal string/)
+
+    const types = {
+      Person: [
+        { name: 'name', type: 'string' },
+        { name: 'wallet', type: 'address' },
+      ],
+      Mail: [
+        { name: 'from', type: 'Person' },
+        { name: 'to', type: 'Person[]' },
+        { name: 'contents', type: 'string' },
+      ],
+    }
+    assert.equal(
+      encodeEip712Type('Mail', types),
+      'Mail(Person from,Person[] to,string contents)Person(string name,address wallet)'
+    )
+    assert.throws(() => encodeEip712Type('MissingType', types), /Unknown primaryType/)
   })
 })
