@@ -42,20 +42,34 @@ export function formatHash(hash: string, chars = 6): string {
 }
 
 export function formatBalance(balance: string | number | bigint, decimals: number): string {
-  const dec = Math.max(0, Math.floor(decimals))
-  const num = typeof balance === 'bigint' ? balance : BigInt(String(balance).replace(/,/g, '').trim() || '0')
+  const dec = Number.isFinite(decimals) ? Math.max(0, Math.floor(decimals)) : 0
+  let num: bigint
+  try {
+    if (typeof balance === 'bigint') {
+      num = balance
+    } else if (typeof balance === 'number') {
+      num = Number.isFinite(balance) ? BigInt(Math.trunc(balance)) : 0n
+    } else {
+      num = BigInt(String(balance ?? '').replace(/,/g, '').trim() || '0')
+    }
+  } catch {
+    return '0'
+  }
+  const sign = num < 0n ? '-' : ''
+  const absNum = num < 0n ? -num : num
   const divisor = 10n ** BigInt(dec)
-  const whole = num / divisor
-  const fraction = num % divisor
-  if (fraction === 0n || dec === 0) return whole.toString()
+  const whole = absNum / divisor
+  const fraction = absNum % divisor
+  if (fraction === 0n || dec === 0) return `${sign}${whole.toString()}`
   const fracStr = fraction.toString().padStart(dec, '0').replace(/0+$/, '')
-  return `${whole}.${fracStr}`
+  return `${sign}${whole}.${fracStr}`
 }
 
 export function parseBalance(balance: string, decimals: number): bigint {
-  const dec = Math.max(0, Math.floor(decimals))
+  if (typeof balance !== 'string') return 0n
+  const dec = Number.isFinite(decimals) ? Math.max(0, Math.floor(decimals)) : 0
   const clean = balance.trim().replace(/,/g, '')
-  if (!clean || clean === '.') return 0n
+  if (!clean || clean === '.' || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(clean)) return 0n
 
   const [rawWhole, rawFraction = ''] = clean.split('.')
   const whole = rawWhole === '' || rawWhole === undefined ? '0' : rawWhole
@@ -109,4 +123,52 @@ function simpleHash(str: string): string {
     hash |= 0
   }
   return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+export function normalizeHexPrefix(value: string): string {
+  if (typeof value !== 'string') return '0x'
+  const cleaned = value.trim()
+  if (!cleaned) return '0x'
+  const raw = cleaned.startsWith('0x') || cleaned.startsWith('0X') ? cleaned.slice(2) : cleaned
+  if (!/^[0-9a-fA-F]*$/.test(raw)) {
+    throw new Error('Invalid hexadecimal string')
+  }
+  return `0x${raw.toLowerCase()}`
+}
+
+export interface TypedDataField {
+  name: string
+  type: string
+}
+
+export function encodeEip712Type(
+  primaryType: string,
+  types: Record<string, TypedDataField[]>
+): string {
+  if (!primaryType || !types[primaryType]) {
+    throw new Error(`Unknown primaryType: ${primaryType}`)
+  }
+  const deps = new Set<string>()
+  const queue = [primaryType]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    if (deps.has(current)) continue
+    deps.add(current)
+    for (const field of types[current] ?? []) {
+      const baseType = field.type.replace(/\[[^\]]*\]$/, '')
+      if (types[baseType] && !deps.has(baseType)) {
+        queue.push(baseType)
+      }
+    }
+  }
+  deps.delete(primaryType)
+  const ordered = [primaryType, ...Array.from(deps).sort()]
+  return ordered
+    .map((typeName) => {
+      const fields = (types[typeName] ?? [])
+        .map((f) => `${f.type} ${f.name}`)
+        .join(',')
+      return `${typeName}(${fields})`
+    })
+    .join('')
 }
