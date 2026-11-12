@@ -6,14 +6,22 @@ const STORAGE_KEYS = {
   WALLET_ADDRESSES: 'token-creator-wallet-addresses',
 } as const
 
-export function getTokens(): Token[] {
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
+function readStoredArray<T>(key: string): T[] {
   if (typeof window === 'undefined') return []
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.TOKENS)
-    return data ? JSON.parse(data) : []
+    const data = localStorage.getItem(key)
+    if (!data) return []
+    const parsed = JSON.parse(data)
+    return Array.isArray(parsed) ? (parsed as T[]) : []
   } catch {
     return []
   }
+}
+
+export function getTokens(): Token[] {
+  return readStoredArray<Token>(STORAGE_KEYS.TOKENS)
 }
 
 export function saveTokens(tokens: Token[]): void {
@@ -48,14 +56,8 @@ export function deleteToken(id: string): void {
 }
 
 export function getTransactions(tokenId?: string): Transaction[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const key = tokenId ? `${STORAGE_KEYS.TRANSACTIONS}_${tokenId}` : STORAGE_KEYS.TRANSACTIONS
-    const data = localStorage.getItem(key)
-    return data ? JSON.parse(data) : []
-  } catch {
-    return []
-  }
+  const key = tokenId ? `${STORAGE_KEYS.TRANSACTIONS}_${tokenId}` : STORAGE_KEYS.TRANSACTIONS
+  return readStoredArray<Transaction>(key)
 }
 
 export function saveTransactions(tokenId: string, transactions: Transaction[]): void {
@@ -71,13 +73,7 @@ export function addTransaction(tokenId: string, transaction: Transaction): void 
 }
 
 export function getWalletAddresses(): string[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const data = localStorage.getItem(STORAGE_KEYS.WALLET_ADDRESSES)
-    return data ? JSON.parse(data) : []
-  } catch {
-    return []
-  }
+  return readStoredArray<string>(STORAGE_KEYS.WALLET_ADDRESSES)
 }
 
 export function saveWalletAddresses(addresses: string[]): void {
@@ -86,9 +82,11 @@ export function saveWalletAddresses(addresses: string[]): void {
 }
 
 export function addWalletAddress(address: string): void {
+  const normalized = address.trim()
+  if (!normalized) return
   const addresses = getWalletAddresses()
-  if (!addresses.includes(address)) {
-    addresses.push(address)
+  if (!addresses.includes(normalized)) {
+    addresses.push(normalized)
     saveWalletAddresses(addresses)
   }
 }
@@ -106,13 +104,28 @@ export function exportAllData(): string {
 export function importAllData(json: string): boolean {
   try {
     const data = JSON.parse(json)
-    if (data.tokens) saveTokens(data.tokens)
-    if (data.transactions) {
-      Object.entries(data.transactions).forEach(([tokenId, txs]) => {
-        saveTransactions(tokenId, txs as Transaction[])
-      })
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return false
+
+    if (data.tokens !== undefined) {
+      if (!Array.isArray(data.tokens)) return false
+      saveTokens(data.tokens)
     }
-    if (data.walletAddresses) saveWalletAddresses(data.walletAddresses)
+    if (data.transactions !== undefined) {
+      if (!data.transactions || typeof data.transactions !== 'object' || Array.isArray(data.transactions)) {
+        return false
+      }
+      for (const [tokenId, txs] of Object.entries(data.transactions)) {
+        if (FORBIDDEN_KEYS.has(tokenId) || !tokenId.trim() || !Array.isArray(txs)) continue
+        saveTransactions(tokenId, txs as Transaction[])
+      }
+    }
+    if (data.walletAddresses !== undefined) {
+      if (!Array.isArray(data.walletAddresses)) return false
+      const validAddresses = data.walletAddresses.filter(
+        (addr: unknown): addr is string => typeof addr === 'string' && addr.trim().length > 0,
+      )
+      saveWalletAddresses(validAddresses)
+    }
     return true
   } catch {
     return false
