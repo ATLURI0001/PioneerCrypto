@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test --experimental-strip-types lib/crypto.test.ts",
+    "test": "node --test --experimental-strip-types lib/crypto.test.ts lib/storage.test.ts lib/contract.test.ts",
     "lint": "next lint"
   },
   "dependencies": {
