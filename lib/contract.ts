@@ -1,15 +1,17 @@
 import { generateAddress, generateTxHash, generateBlockNumber, generateGasUsed, formatBalance, parseBalance } from './crypto.ts'
 import type { ContractState, Transaction, Token } from './types.ts'
 
-export function createInitialContractState(token: Token): ContractState {
-  const deployerAddress = generateAddress()
+export function createInitialContractState(token: Token, deployerAddress?: string): ContractState {
+  const deployer = (typeof deployerAddress === 'string' && deployerAddress.trim())
+    ? deployerAddress.trim().toLowerCase()
+    : generateAddress().toLowerCase()
   return {
     name: token.name,
     symbol: token.symbol,
     decimals: token.decimals,
     totalSupply: token.totalSupply,
     balances: {
-      [deployerAddress]: token.totalSupply,
+      [deployer]: token.totalSupply,
     },
     allowances: {},
   }
@@ -200,6 +202,77 @@ export function decreaseAllowance(
   return approve(state, owner, spender, (current - subBig).toString())
 }
 
+export function mint(
+  state: ContractState,
+  to: string,
+  amount: string
+): { success: boolean; newState: ContractState; error?: string } {
+  if (!state || !state.balances) {
+    return { success: false, newState: state, error: 'Invalid contract state' }
+  }
+  if (!to || typeof to !== 'string') {
+    return { success: false, newState: state, error: 'Invalid address' }
+  }
+  let amountBig: bigint
+  try {
+    amountBig = BigInt(amount)
+  } catch {
+    return { success: false, newState: state, error: 'Invalid amount' }
+  }
+  if (amountBig <= 0n) {
+    return { success: false, newState: state, error: 'Amount must be greater than 0' }
+  }
+
+  const toLower = to.toLowerCase()
+  const currentTotal = BigInt(state.totalSupply || '0')
+  const toBalance = BigInt(state.balances[toLower] || '0')
+
+  const newState = JSON.parse(JSON.stringify(state)) as ContractState
+  newState.totalSupply = (currentTotal + amountBig).toString()
+  newState.balances[toLower] = (toBalance + amountBig).toString()
+
+  return { success: true, newState }
+}
+
+export function burn(
+  state: ContractState,
+  from: string,
+  amount: string
+): { success: boolean; newState: ContractState; error?: string } {
+  if (!state || !state.balances) {
+    return { success: false, newState: state, error: 'Invalid contract state' }
+  }
+  if (!from || typeof from !== 'string') {
+    return { success: false, newState: state, error: 'Invalid address' }
+  }
+  let amountBig: bigint
+  try {
+    amountBig = BigInt(amount)
+  } catch {
+    return { success: false, newState: state, error: 'Invalid amount' }
+  }
+  if (amountBig <= 0n) {
+    return { success: false, newState: state, error: 'Amount must be greater than 0' }
+  }
+
+  const fromLower = from.toLowerCase()
+  const fromBalance = BigInt(state.balances[fromLower] || '0')
+  const currentTotal = BigInt(state.totalSupply || '0')
+
+  if (fromBalance < amountBig) {
+    return { success: false, newState: state, error: 'Insufficient balance to burn' }
+  }
+  if (currentTotal < amountBig) {
+    return { success: false, newState: state, error: 'Burn amount exceeds total supply' }
+  }
+
+  const newState = JSON.parse(JSON.stringify(state)) as ContractState
+  newState.balances[fromLower] = (fromBalance - amountBig).toString()
+  newState.totalSupply = (currentTotal - amountBig).toString()
+
+  return { success: true, newState }
+}
+
 export function createTransaction(
   type: Transaction['type'],
   from: string,
@@ -210,11 +283,11 @@ export function createTransaction(
   return {
     id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     type,
-    from: from.toLowerCase(),
-    to: to.toLowerCase(),
-    amount,
-    spender: options?.spender?.toLowerCase(),
-    owner: options?.owner?.toLowerCase(),
+    from: typeof from === 'string' ? from.toLowerCase() : '',
+    to: typeof to === 'string' ? to.toLowerCase() : '',
+    amount: typeof amount === 'string' ? amount : String(amount ?? '0'),
+    spender: typeof options?.spender === 'string' ? options.spender.toLowerCase() : undefined,
+    owner: typeof options?.owner === 'string' ? options.owner.toLowerCase() : undefined,
     txHash: generateTxHash(),
     blockNumber: generateBlockNumber(),
     timestamp: Date.now(),

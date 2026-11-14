@@ -8,6 +8,10 @@ import {
   transferFrom,
   increaseAllowance,
   decreaseAllowance,
+  mint,
+  burn,
+  createInitialContractState,
+  createTransaction,
 } from './contract.ts'
 import type { ContractState } from './types.ts'
 
@@ -102,4 +106,60 @@ test('transferFrom guards allowances, balances, and malformed inputs', () => {
   assert.equal(transferFrom(initialMockState, '0xcharlie', '0xalice', '0xbob', 'not_a_num').success, false)
   // Missing addresses
   assert.equal(transferFrom(initialMockState, null as any, '0xalice', '0xbob', '10').success, false)
+})
+
+test('mint and burn update total supply and balances with strict bounds checks', () => {
+  // Mint increases recipient balance and total supply
+  const m1 = mint(initialMockState, '0xbob', '400')
+  assert.equal(m1.success, true)
+  assert.equal(m1.newState.balances['0xbob'], '900')
+  assert.equal(m1.newState.totalSupply, '1000400')
+
+  // Mint guards against invalid inputs
+  assert.equal(mint(initialMockState, '', '100').success, false)
+  assert.equal(mint(initialMockState, '0xbob', '0').success, false)
+  assert.equal(mint(initialMockState, '0xbob', '-50').success, false)
+  assert.equal(mint(initialMockState, '0xbob', 'invalid').success, false)
+
+  // Burn decreases holder balance and total supply
+  const b1 = burn(initialMockState, '0xalice', '300')
+  assert.equal(b1.success, true)
+  assert.equal(b1.newState.balances['0xalice'], '700')
+  assert.equal(b1.newState.totalSupply, '999700')
+
+  // Burn guards against overdraft and excessive supply burn
+  assert.equal(burn(initialMockState, '0xalice', '2000').success, false)
+  assert.equal(burn(initialMockState, '0xalice', '0').success, false)
+  assert.equal(burn(initialMockState, '0xalice', '-10').success, false)
+  assert.equal(burn(initialMockState, null as any, '100').success, false)
+})
+
+test('createInitialContractState and createTransaction normalize addresses and guard nulls', () => {
+  const token = {
+    id: 'tok1',
+    name: 'Pioneer',
+    symbol: 'PIO',
+    totalSupply: '500000',
+    decimals: 18,
+    description: 'Test',
+    logo: null,
+    createdAt: Date.now(),
+    deployedAt: null,
+    contractAddress: null,
+    txHash: null,
+    blockNumber: null,
+    gasUsed: null,
+    network: 'sepolia',
+  }
+
+  const s1 = createInitialContractState(token, '0xDeployerUpper')
+  assert.equal(s1.balances['0xdeployerupper'], '500000')
+  assert.equal(s1.name, 'Pioneer')
+
+  const tx = createTransaction('mint', null as any, '0xRecipient', '250', { spender: '0xSPENDER' })
+  assert.equal(tx.from, '')
+  assert.equal(tx.to, '0xrecipient')
+  assert.equal(tx.amount, '250')
+  assert.equal(tx.spender, '0xspender')
+  assert.equal(tx.type, 'mint')
 })
