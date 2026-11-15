@@ -13,6 +13,10 @@ import {
   shortenAddress,
   normalizeHexPrefix,
   encodeEip712Type,
+  isZeroAddress,
+  validateChainId,
+  parseUnits,
+  formatUnits,
 } from './crypto.ts'
 
 describe('Crypto Utilities', () => {
@@ -115,5 +119,35 @@ describe('Crypto Utilities', () => {
       'Mail(Person from,Person[] to,string contents)Person(string name,address wallet)'
     )
     assert.throws(() => encodeEip712Type('MissingType', types), /Unknown primaryType/)
+  })
+
+  it('validates zero address and standard chain IDs', () => {
+    assert.ok(isZeroAddress('0x0000000000000000000000000000000000000000'))
+    assert.ok(isZeroAddress('0x0000000000000000000000000000000000000000'.toUpperCase()))
+    assert.equal(isZeroAddress('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'), false)
+    assert.equal(isZeroAddress('invalid_address'), false)
+
+    assert.ok(validateChainId(1)) // Ethereum Mainnet
+    assert.ok(validateChainId(137)) // Polygon
+    assert.ok(validateChainId('8453')) // Base
+    assert.ok(validateChainId(11155111n)) // Sepolia
+    assert.equal(validateChainId(0), false)
+    assert.equal(validateChainId(-1), false)
+    assert.equal(validateChainId(1.5), false)
+    assert.equal(validateChainId('abc'), false)
+    assert.equal(validateChainId(Number.NaN), false)
+    assert.equal(validateChainId(Number.POSITIVE_INFINITY), false)
+  })
+
+  it('parses and formats standard Ethereum units correctly', () => {
+    assert.equal(parseUnits('1', 'ether'), 1000000000000000000n)
+    assert.equal(parseUnits('50', 'gwei'), 50000000000n)
+    assert.equal(parseUnits('123', 'wei'), 123n)
+    assert.equal(parseUnits('2.5', 6), 2500000n)
+
+    assert.equal(formatUnits(1000000000000000000n, 'ether'), '1')
+    assert.equal(formatUnits(50000000000n, 'gwei'), '50')
+    assert.equal(formatUnits(123n, 'wei'), '123')
+    assert.equal(formatUnits(2500000n, 6), '2.5')
   })
 })

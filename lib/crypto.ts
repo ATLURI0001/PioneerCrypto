@@ -136,6 +136,49 @@ export function normalizeHexPrefix(value: string): string {
   return `0x${raw.toLowerCase()}`
 }
 
+export function isZeroAddress(address: string): boolean {
+  if (typeof address !== 'string') return false
+  const clean = address.trim().toLowerCase()
+  return isValidAddress(clean) && clean === '0x0000000000000000000000000000000000000000'
+}
+
+export function validateChainId(chainId: number | string | bigint): boolean {
+  if (typeof chainId === 'number') {
+    if (!Number.isSafeInteger(chainId) || chainId <= 0) return false
+    return true
+  }
+  try {
+    const raw = String(chainId).trim()
+    if (!/^\d+$/.test(raw)) return false
+    const val = BigInt(raw)
+    return val > 0n && val <= (2n ** 64n - 1n)
+  } catch {
+    return false
+  }
+}
+
+export type StandardUnit = 'wei' | 'kwei' | 'mwei' | 'gwei' | 'szabo' | 'finney' | 'ether'
+
+export const UNIT_DECIMALS: Record<StandardUnit, number> = {
+  wei: 0,
+  kwei: 3,
+  mwei: 6,
+  gwei: 9,
+  szabo: 12,
+  finney: 15,
+  ether: 18,
+}
+
+export function parseUnits(value: string, unit: StandardUnit | number = 'ether'): bigint {
+  const dec = typeof unit === 'number' ? unit : (UNIT_DECIMALS[unit] ?? 18)
+  return parseBalance(value, dec)
+}
+
+export function formatUnits(value: string | number | bigint, unit: StandardUnit | number = 'ether'): string {
+  const dec = typeof unit === 'number' ? unit : (UNIT_DECIMALS[unit] ?? 18)
+  return formatBalance(value, dec)
+}
+
 export interface TypedDataField {
   name: string
   type: string
