@@ -215,3 +215,51 @@ export function encodeEip712Type(
     })
     .join('')
 }
+
+export function validateFunctionSelector(selector: string): boolean {
+  return typeof selector === 'string' && /^0x[0-9a-fA-F]{8}$/.test(selector.trim())
+}
+
+export function isContractBytecode(bytecode: string): boolean {
+  if (typeof bytecode !== 'string') return false
+  const clean = bytecode.trim()
+  return /^0x[0-9a-fA-F]+$/.test(clean) && (clean.length - 2) % 2 === 0
+}
+
+export function padAbiWord(param: string | bigint | number | boolean): string {
+  if (typeof param === 'boolean') {
+    return (param ? '1' : '0').padStart(64, '0')
+  }
+  if (typeof param === 'bigint') {
+    if (param < 0n) throw new Error('ABI uint256 word cannot be negative')
+    return param.toString(16).padStart(64, '0')
+  }
+  if (typeof param === 'number') {
+    if (!Number.isFinite(param) || param < 0) throw new Error('Invalid numeric ABI parameter')
+    return Math.trunc(param).toString(16).padStart(64, '0')
+  }
+  if (typeof param === 'string') {
+    const clean = param.trim()
+    if (isValidAddress(clean)) {
+      return clean.toLowerCase().replace(/^0x/, '').padStart(64, '0')
+    }
+    const hex = clean.startsWith('0x') || clean.startsWith('0X') ? clean.slice(2) : clean
+    if (/^[0-9a-fA-F]+$/.test(hex)) {
+      return hex.toLowerCase().padStart(64, '0')
+    }
+    throw new Error(`Unsupported string parameter for ABI word encoding: ${param}`)
+  }
+  throw new Error('Unsupported ABI parameter type')
+}
+
+export function encodeFunctionCall(
+  selector: string,
+  params: Array<string | bigint | number | boolean> = []
+): string {
+  if (!validateFunctionSelector(selector)) {
+    throw new Error(`Invalid 4-byte function selector: ${selector}`)
+  }
+  const cleanSelector = selector.trim().toLowerCase()
+  const encodedWords = params.map(padAbiWord).join('')
+  return `${cleanSelector}${encodedWords}`
+}
