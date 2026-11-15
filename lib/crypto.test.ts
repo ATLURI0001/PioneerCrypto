@@ -17,6 +17,10 @@ import {
   validateChainId,
   parseUnits,
   formatUnits,
+  validateFunctionSelector,
+  isContractBytecode,
+  padAbiWord,
+  encodeFunctionCall,
 } from './crypto.ts'
 
 describe('Crypto Utilities', () => {
@@ -149,5 +153,35 @@ describe('Crypto Utilities', () => {
     assert.equal(formatUnits(50000000000n, 'gwei'), '50')
     assert.equal(formatUnits(123n, 'wei'), '123')
     assert.equal(formatUnits(2500000n, 6), '2.5')
+  })
+
+  it('validates selectors, bytecode, and encodes ABI function calls', () => {
+    // 4-byte selector validation
+    assert.ok(validateFunctionSelector('0xa9059cbb')) // transfer(address,uint256)
+    assert.ok(validateFunctionSelector('0x095ea7b3')) // approve(address,uint256)
+    assert.equal(validateFunctionSelector('0xa9059cb'), false) // 7 hex chars
+    assert.equal(validateFunctionSelector('a9059cbb'), false) // missing 0x
+    assert.equal(validateFunctionSelector('0xa9059cbbff'), false) // 10 hex chars
+
+    // Bytecode validation
+    assert.ok(isContractBytecode('0x608060405234801561001057600080fd5b50'))
+    assert.equal(isContractBytecode('0x608'), false) // odd number of hex digits
+    assert.equal(isContractBytecode('0x'), false) // empty
+
+    // ABI Word padding
+    assert.equal(padAbiWord(true), '0000000000000000000000000000000000000000000000000000000000000001')
+    assert.equal(padAbiWord(100n), '0000000000000000000000000000000000000000000000000000000000000064')
+    assert.equal(
+      padAbiWord('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'),
+      '000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa96045'
+    )
+
+    // Function call encoding: transfer(vitalik, 1000 tokens with 18 decimals)
+    const calldata = encodeFunctionCall('0xa9059cbb', [
+      '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+      1000n * 10n ** 18n,
+    ])
+    assert.ok(calldata.startsWith('0xa9059cbb'))
+    assert.equal(calldata.length, 10 + 64 + 64)
   })
 })
