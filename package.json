@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test --experimental-strip-types lib/crypto.test.ts lib/storage.test.ts lib/contract.test.ts lib/merkle.test.ts lib/eip1559.test.ts lib/amm.test.ts lib/staking.test.ts lib/multisig.test.ts lib/escrow.test.ts lib/orderbook_contract.test.ts lib/gas_telemetry.test.ts lib/reentrancy_guard.test.ts lib/vesting_escrow.test.ts lib/oracle_circuit_breaker.test.ts lib/amm_route_profiler.test.ts lib/permit_contract.test.ts lib/liquidity_telemetry.test.ts",
+    "test": "node --test --experimental-strip-types lib/crypto.test.ts lib/storage.test.ts lib/contract.test.ts lib/merkle.test.ts lib/eip1559.test.ts lib/amm.test.ts lib/staking.test.ts lib/multisig.test.ts lib/escrow.test.ts lib/orderbook_contract.test.ts lib/gas_telemetry.test.ts lib/reentrancy_guard.test.ts lib/vesting_escrow.test.ts lib/oracle_circuit_breaker.test.ts lib/amm_route_profiler.test.ts lib/permit_contract.test.ts lib/liquidity_telemetry.test.ts lib/mev_slippage_guard.test.ts",
     "lint": "next lint"
   },
   "dependencies": {
